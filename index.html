@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Master | Arcade Hub</title>
+    <style>
+        :root {
+            --primary: #89b4fa;
+            --bg: #89b4fa;
+            --card-bg: #ffffff;
+            --text: #1e1e2e;
+            --border: #1e1e2e;
+            --accent: #f38ba8;
+            --gold: #fab387;
+            --purple: #cba6f7;
+            --cyan: #94e2d5;
+            --green: #a6e3a1;
+        }
+
+        body.dark-mode {
+            --bg: #11111b;
+            --card-bg: #1e1e2e;
+            --text: #cdd6f4;
+            --border: #45475a;
+        }
+
+        * { box-sizing: border-box; transition: background 0.3s, transform 0.2s; }
+
+        body {
+            background-color: var(--bg);
+            font-family: 'Arial Black', sans-serif;
+            margin: 0; display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; color: var(--text);
+        }
+
+        .theme-toggle {
+            position: absolute; top: 20px; right: 20px;
+            background: var(--text); color: var(--card-bg);
+            border: none; padding: 12px 20px; border-radius: 50px;
+            cursor: pointer; font-family: inherit; font-size: 0.8rem;
+            box-shadow: 0 4px var(--border);
+        }
+
+        header { text-align: center; padding: 60px 20px 30px; }
+        h1 { margin: 0; font-size: 4.5rem; text-shadow: 6px 6px var(--card-bg); text-transform: uppercase; letter-spacing: -2px; }
+        body.dark-mode h1 { text-shadow: 6px 6px #000; }
+
+        .hub-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px; width: 95%; max-width: 1200px; padding: 40px 0;
+        }
+
+        .game-card {
+            background: var(--card-bg); border: 6px solid var(--border);
+            border-radius: 25px; padding: 25px; text-align: center;
+            cursor: pointer; position: relative;
+            box-shadow: 0 10px 0px var(--border);
+            display: flex; flex-direction: column; justify-content: space-between;
+            min-height: 220px;
+        }
+
+        .game-card:hover { transform: translateY(-10px) rotate(1deg); box-shadow: 0 20px 0px rgba(0,0,0,0.15); }
+
+        .game-card h2 { margin: 0 0 10px; font-size: 1.8rem; letter-spacing: -1px; }
+        .game-card p { font-family: 'Arial', sans-serif; font-weight: bold; opacity: 0.8; margin-bottom: 20px; font-size: 0.95rem; line-height: 1.4; }
+
+        .play-btn {
+            background: var(--border); color: var(--card-bg); padding: 12px;
+            border-radius: 12px; font-size: 1.2rem; border: none; font-family: inherit;
+        }
+
+        .game-card:hover .play-btn { background: var(--accent); color: #000; }
+
+        .badge {
+            position: absolute; top: -12px; right: 10px;
+            border: 4px solid var(--border); padding: 4px 12px;
+            border-radius: 10px; font-size: 0.8rem; font-weight: bold;
+            z-index: 2;
+        }
+
+        .footer { padding: 40px; font-weight: bold; opacity: 0.6; text-align: center; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <button class="theme-toggle" onclick="toggleTheme()">🌙 TOGGLE THEME</button>
+
+    <header>
+        <h1>STUDY MASTER</h1>
+    </header>
+
+    <div class="hub-grid">
+        <div class="game-card" onclick="location.href='games/tetris.html'" style="border-color: var(--cyan);">
+            <div class="badge" style="background: var(--cyan); color: #000;">4-IN-1</div>
+            <div>
+                <h2>Tetris Library</h2>
+                <p>Explore four distinct ways to play the classic block-stacking game, from "Easy Mode" to Hardcore.</p>
+            </div>
+            <button class="play-btn">OPEN LIBRARY</button>
+        </div>
+
+        <div class="game-card" onclick="location.href='games/ballpong.html'" style="border-color: var(--gold);">
+            <div class="badge" style="background: var(--gold); color: #000;">NEW GAME</div>
+            <div>
+                <h2>Ball Pong</h2>
+                <p>High-stakes basketball pong. Play against a smart AI or challenge a friend in 2-player mode.</p>
+            </div>
+            <button class="play-btn">START MATCH</button>
+        </div>
+
+        <div class="game-card" onclick="location.href='games/cookie.html'" style="border-color: var(--purple);">
+            <div class="badge" style="background: var(--purple); color: white;">REBIRTH V3</div>
+            <div>
+                <h2>Cookie Elite</h2>
+                <p>The ultimate clicker experience. Unlock buildings, collect golden cookies, and prestige for massive boosts.</p>
+            </div>
+            <button class="play-btn">BAKE NOW</button>
+        </div>
+
+        <div class="game-card" onclick="location.href='games/2048.html'">
+            <div class="badge" style="background: var(--cyan); color: #000;">CLASSIC</div>
+            <div>
+                <h2>2048 Elite</h2>
+                <p>Merge the tiles and reach the legendary 2048. Smooth animations and elite logic.</p>
+            </div>
+            <button class="play-btn">SOLVE IT</button>
+        </div>
+
+        <div class="game-card" onclick="location.href='games/brickbreaker.html'">
+            <div class="badge" style="background: var(--accent); color: #000;">ARCADE</div>
+            <div>
+                <h2>Brick Breaker</h2>
+                <p>Smash through walls with multi-ball powerups. Classic paddle action at its finest.</p>
+            </div>
+            <button class="play-btn">SMASH</button>
+        </div>
+
+        <div class="game-card" onclick="location.href='games/15.html'">
+            <div class="badge" style="background: #eee; color: #000;">LOGIC</div>
+            <div>
+                <h2>15 Puzzle</h2>
+                <p>The ultimate sliding tile challenge. Organize the numbers in the fastest time possible.</p>
+            </div>
+            <button class="play-btn">SLIDE</button>
+        </div>
+
+        <div class="game-card" onclick="location.href='games/cattrap.html'">
+            <div class="badge" style="background: var(--green); color: #000;">STRATEGY</div>
+            <div>
+                <h2>Cat Trap</h2>
+                <p>Outsmart the AI cat by blocking its path on a hexagonal grid. Don't let it escape!</p>
+            </div>
+            <button class="play-btn">TRAP IT</button>
+        </div>
+    </div>
+
+    <div class="footer">© 2026 STUDY MASTER ARCADE • ALL PROGRESS AUTO-SAVED</div>
+
+    <script>
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('masterTheme', isDark ? 'dark' : 'light');
+        }
+        if (localStorage.getItem('masterTheme') === 'dark') {
+            document.body.classList.add('dark-mode');
+        }
+    </script>
+</body>
+</html>

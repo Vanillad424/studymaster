@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Ball Pong Elite | Arcade</title>
+    <style>
+        :root {
+            --primary: #89b4fa; --dark: #11111b; --white: #cdd6f4;
+            --orange: #fab387; --accent: #f38ba8; --surface: #1e1e2e;
+            --green: #a6e3a1;
+        }
+
+        body {
+            background-color: var(--dark); font-family: 'Arial Black', sans-serif;
+            margin: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; height: 100vh;
+            color: var(--white); overflow: hidden;
+            background: radial-gradient(circle at center, #1e1e2e 0%, #11111b 100%);
+        }
+
+        #menu, #difficulty-menu {
+            background: rgba(30, 30, 46, 0.95);
+            padding: 50px; border-radius: 40px; border: 4px solid var(--primary);
+            text-align: center; z-index: 10; box-shadow: 0 0 80px rgba(0,0,0,0.6);
+            width: 500px; backdrop-filter: blur(10px);
+        }
+
+        #difficulty-menu { display: none; }
+
+        h1 { color: var(--orange); margin: 0 0 10px 0; font-size: 3.5rem; letter-spacing: -2px; }
+        h2 { color: var(--primary); margin-bottom: 25px; }
+
+        .mode-container { display: flex; flex-direction: column; gap: 15px; margin: 30px 0; }
+
+        .btn {
+            background: var(--primary); color: var(--dark); border: none;
+            padding: 18px; border-radius: 15px; font-family: inherit;
+            cursor: pointer; font-size: 1.4rem; transition: 0.3s;
+            box-shadow: 0 6px 0 #74c7ec; width: 100%;
+        }
+
+        .btn:hover { transform: translateY(-3px); background: var(--white); }
+        .btn-bot { background: var(--accent); box-shadow: 0 6px 0 #e36c88; }
+        .btn-diff { font-size: 1.1rem; padding: 12px; }
+
+        #countdown { position: absolute; font-size: 10rem; color: var(--white); display: none; z-index: 20; }
+        canvas { background: #181825; border: 10px solid #313244; border-radius: 25px; display: none; }
+        .score-board { font-size: 6rem; margin-bottom: 5px; display: none; color: var(--orange); }
+
+        /* Trash Talk Bubble */
+        #speech-bubble {
+            position: absolute; background: white; color: black;
+            padding: 10px 15px; border-radius: 15px; font-family: 'Arial', sans-serif;
+            font-weight: bold; font-size: 0.9rem; display: none;
+            pointer-events: none; white-space: nowrap; z-index: 100;
+        }
+        #speech-bubble::after {
+            content: ''; position: absolute; bottom: -10px; right: 20px;
+            border-width: 10px 10px 0; border-style: solid; border-color: white transparent;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="speech-bubble">Nice shot!</div>
+    <div id="countdown">3</div>
+
+    <div id="menu">
+        <h1>BALL PONG</h1>
+        <div class="mode-container">
+            <button class="btn" onclick="startGame(true)">PLAY HUMAN</button>
+            <button class="btn btn-bot" onclick="showDifficulty()">VS BOT</button>
+        </div>
+    </div>
+
+    <div id="difficulty-menu">
+        <h2>SELECT BOT LEVEL</h2>
+        <div class="mode-container">
+            <button class="btn btn-diff" style="background:var(--green); box-shadow:0 6px 0 #89b482;" onclick="setBot('Easy', 4, 35)">EASY</button>
+            <button class="btn btn-diff" style="background:var(--primary); box-shadow:0 6px 0 #74c7ec;" onclick="setBot('Medium', 6.5, 18)">MEDIUM</button>
+            <button class="btn btn-diff" style="background:var(--orange); box-shadow:0 6px 0 #d69970;" onclick="setBot('Hard', 10, 5)">HARD</button>
+            <button class="btn btn-diff" style="background:var(--accent); box-shadow:0 6px 0 #e36c88;" onclick="setBot('Impossible', 15, 0)">IMPOSSIBLE</button>
+        </div>
+        <button onclick="location.reload()" style="background:none; border:none; color:white; cursor:pointer;">← Back</button>
+    </div>
+
+    <div class="score-board" id="score">00 : 00</div>
+    <canvas id="pongCanvas" width="850" height="500"></canvas>
+    
+    <script>
+        const canvas = document.getElementById("pongCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreBoard = document.getElementById("score");
+        const cdDiv = document.getElementById("countdown");
+        const bubble = document.getElementById("speech-bubble");
+
+        let isTwoPlayer = false, p1Score = 0, p2Score = 0;
+        let gameRunning = false, waiting = false, initialStart = true;
+        
+        let botLevel = "Medium", botSpeed = 6, botErrorMargin = 15;
+
+        const ball = { x: 425, y: 250, radius: 12, dx: 0, dy: 0, speed: 8 };
+        const p1 = { y: 200, h: 100, w: 15 };
+        const p2 = { y: 200, h: 100, w: 15 };
+
+        const dialogue = {
+            "Easy": ["Oops!", "My bad...", "You're good!", "Wait for me!", "Nice hit!"],
+            "Medium": ["Not bad!", "I'm warming up.", "Close one!", "Focusing now...", "Good rally!"],
+            "Hard": ["Is that all?", "Too slow!", "I saw that coming.", "Try harder.", "Calculated."],
+            "Impossible": ["Give up.", "I am perfection.", "Error 404: Skill not found.", "Yawn.", "Pixel perfect."]
+        };
+
+        const keys = {};
+        window.addEventListener("keydown", (e) => keys[e.code] = true);
+        window.addEventListener("keyup", (e) => keys[e.code] = false);
+
+        function showDifficulty() {
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('difficulty-menu').style.display = 'block';
+        }
+
+        function setBot(level, speed, margin) {
+            botLevel = level; botSpeed = speed; botErrorMargin = margin;
+            startGame(false);
+        }
+
+        function talk() {
+            if (isTwoPlayer) return;
+            const lines = dialogue[botLevel];
+            bubble.innerText = lines[Math.floor(Math.random() * lines.length)];
+            bubble.style.display = "block";
+            updateBubblePos();
+            setTimeout(() => { bubble.style.display = "none"; }, 2000);
+        }
+
+        function updateBubblePos() {
+            const rect = canvas.getBoundingClientRect();
+            bubble.style.left = (rect.left + 780 - bubble.offsetWidth) + "px";
+            bubble.style.top = (rect.top + p2.y - 40) + "px";
+        }
+
+        async function startCountdown() {
+            waiting = true; cdDiv.style.display = "block";
+            for (let i = 3; i > 0; i--) { cdDiv.innerText = i; await new Promise(r => setTimeout(r, 700)); }
+            cdDiv.innerText = "GO!";
+            setTimeout(() => cdDiv.style.display = "none", 400);
+            launchBall(); waiting = false; initialStart = false; 
+        }
+
+        function launchBall() {
+            ball.dx = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+            ball.dy = (Math.random() > 0.5 ? 1 : -1) * (ball.speed - 2);
+        }
+
+        function startGame(human) {
+            isTwoPlayer = human;
+            document.getElementById('menu').style.display = "none";
+            document.getElementById('difficulty-menu').style.display = "none";
+            canvas.style.display = "block"; scoreBoard.style.display = "block";
+            gameRunning = true; resetBall(); update();
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2; ball.y = canvas.height / 2;
+            ball.dx = 0; ball.dy = 0;
+            if (initialStart) startCountdown();
+            else { 
+                talk();
+                setTimeout(launchBall, 600); 
+            }
+        }
+
+        function update() {
+            if (!gameRunning) return;
+            if (!waiting) {
+                let up1 = isTwoPlayer ? keys["KeyW"] : (keys["KeyW"] || keys["ArrowUp"]);
+                let dn1 = isTwoPlayer ? keys["KeyS"] : (keys["KeyS"] || keys["ArrowDown"]);
+                if (up1 && p1.y > 10) p1.y -= 10;
+                if (dn1 && p1.y < canvas.height - p1.h - 10) p1.y += 10;
+
+                if (isTwoPlayer) {
+                    if (keys["ArrowUp"] && p2.y > 10) p2.y -= 10;
+                    if (keys["ArrowDown"] && p2.y < canvas.height - p2.h - 10) p2.y += 10;
+                } else {
+                    if (ball.dx > 0) {
+                        let center = p2.y + p2.h / 2;
+                        if (center < ball.y - botErrorMargin) p2.y += botSpeed;
+                        else if (center > ball.y + botErrorMargin) p2.y -= botSpeed;
+                    }
+                }
+
+                ball.x += ball.dx; ball.y += ball.dy;
+                if (ball.y < 20 || ball.y > canvas.height - 20) ball.dy *= -1;
+
+                if (ball.x < 35 + p1.w && ball.y > p1.y && ball.y < p1.y + p1.h) {
+                    ball.dx = Math.abs(ball.dx) * 1.05;
+                    ball.dy = (ball.y - (p1.y + p1.h/2)) * 0.3;
+                }
+                if (ball.x > 815 - p2.w && ball.y > p2.y && ball.y < p2.y + p2.h) {
+                    ball.dx = -Math.abs(ball.dx) * 1.05;
+                    ball.dy = (ball.y - (p2.y + p2.h/2)) * 0.3;
+                }
+
+                if (ball.x < 0) { p2Score++; resetBall(); }
+                if (ball.x > canvas.width) { p1Score++; resetBall(); }
+            }
+            if (bubble.style.display === "block") updateBubblePos();
+            scoreBoard.innerText = `${p1Score} : ${p2Score}`;
+            draw();
+            requestAnimationFrame(update);
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 4;
+            ctx.strokeRect(15, 15, canvas.width-30, canvas.height-30);
+            ctx.beginPath(); ctx.moveTo(canvas.width/2, 15); ctx.lineTo(canvas.width/2, canvas.height-15); ctx.stroke();
+            ctx.fillStyle = "#89b4fa"; ctx.fillRect(20, p1.y, p1.w, p1.h);
+            ctx.fillStyle = isTwoPlayer ? "#f38ba8" : "#94e2d5"; ctx.fillRect(815, p2.y, p2.w, p2.h);
+            ctx.fillStyle = "#fab387"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fill();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Study Master: Cookie Elite Rebirth</title>
+    <style>
+        :root {
+            --primary: #89b4fa; --dark: #1e1e2e; --white: #ffffff;
+            --accent: #f38ba8; --green: #a6e3a1; --cookie: #fab387;
+            --prestige: #cba6f7;
+        }
+
+        body {
+            background-color: var(--dark); font-family: 'Arial Black', sans-serif;
+            margin: 0; display: flex; height: 100vh; color: var(--white); overflow: hidden;
+        }
+
+        /* Panels */
+        .clicker-area {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: radial-gradient(circle, #313244 0%, #11111b 100%);
+            border-right: 6px solid #45475a; position: relative;
+        }
+
+        .shop-area { width: 450px; background: #181825; display: flex; flex-direction: column; padding: 20px; }
+
+        /* Cookie UI */
+        #cookie-total { font-size: 3.5rem; margin: 0; color: var(--cookie); text-shadow: 0 0 15px rgba(250, 179, 135, 0.4); }
+        #cookie {
+            width: 260px; height: 260px; background: var(--cookie); border-radius: 50%;
+            border: 10px solid #ef9f76; cursor: pointer; position: relative; transition: transform 0.05s;
+            box-shadow: 0 15px 0 #ba4a00, 0 30px 60px rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center; user-select: none;
+        }
+        #cookie:active { transform: scale(0.93) translateY(10px); }
+        .chip { position: absolute; background: #45475a; width: 22px; height: 22px; border-radius: 50%; }
+
+        /* Prestige Modal */
+        #prestige-modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 350px; background: #1e1e2e; border: 5px solid var(--prestige);
+            border-radius: 20px; padding: 30px; z-index: 2000; box-shadow: 0 0 100px rgba(0,0,0,0.8);
+            text-align: center;
+        }
+        .req-item { font-family: 'Arial'; margin: 10px 0; padding: 8px; border-radius: 8px; background: #313244; font-size: 0.9rem; }
+        .met { color: var(--green); border-left: 5px solid var(--green); }
+        .not-met { color: var(--accent); border-left: 5px solid var(--accent); }
+
+        /* Buttons */
+        .btn-prestige-open { background: var(--prestige); color: var(--dark); border: none; padding: 12px 25px; border-radius: 12px; cursor: pointer; margin-top: 20px; font-family: inherit; }
+        .btn-confirm { background: var(--green); color: var(--dark); padding: 15px; width: 100%; border: none; border-radius: 10px; font-family: inherit; font-size: 1.1rem; cursor: pointer; margin-top: 20px; }
+        .disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+
+        .upgrade-item { background: #313244; border: 3px solid #45475a; border-radius: 15px; padding: 15px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .upgrade-item.locked { opacity: 0.4; filter: grayscale(1); }
+
+        .pop { position: absolute; font-size: 24px; pointer-events: none; animation: float 0.8s forwards; z-index: 100; text-shadow: 2px 2px black; }
+        @keyframes float { to { transform: translateY(-100px); opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="prestige-modal">
+        <h2 style="color:var(--prestige); margin:0 0 15px 0;">REBIRTH CHAMBER</h2>
+        <p style="font-size: 0.8rem; opacity: 0.8;">Reset progress for +20% permanent boost per level.</p>
+        
+        <div id="req-cookies" class="req-item">1 Million Cookies</div>
+        <div id="req-clickers" class="req-item">50 Clicker Pros</div>
+        <div id="req-factories" class="req-item">10 Choco Factories</div>
+
+        <button id="confirm-prestige-btn" class="btn-confirm disabled" onclick="doPrestige()">CONFIRM REBIRTH</button>
+        <button style="background:none; border:none; color:white; margin-top:15px; cursor:pointer; text-decoration:underline;" onclick="togglePrestige(false)">Close</button>
+    </div>
+
+    <div class="clicker-area">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h1 id="cookie-total">0</h1>
+            <div id="cps-val" style="color: var(--green);">per second: 0</div>
+            <div id="prestige-val" style="color: var(--prestige); margin-top: 5px;">Rebirth Level: 0</div>
+        </div>
+
+        <div id="cookie" onclick="bake(event)">
+            <div class="chip" style="top:20%; left:25%;"></div>
+            <div class="chip" style="top:50%; left:15%;"></div>
+            <div class="chip" style="top:70%; left:40%;"></div>
+            <div class="chip" style="top:15%; left:60%;"></div>
+        </div>
+
+        <button class="btn-prestige-open" onclick="togglePrestige(true)">🏆 OPEN REBIRTH MENU</button>
+        <button onclick="window.location.href='../index.html'" style="margin-top:20px; color:#585b70; background:none; border:none; cursor:pointer;">Hub</button>
+    </div>
+
+    <div class="shop-area">
+        <h2 style="color:var(--accent); text-align:center;">ELITE UPGRADES</h2>
+        <div class="upgrade-list" id="shop-container"></div>
+    </div>
+
+    <script>
+        let cookies = 0;
+        let cps = 0;
+        let rebirthLevel = 0;
+
+        const items = [
+            { name: "Clicker Pro", cost: 15, base: 15, add: 0.5, count: 0 },
+            { name: "Grandma", cost: 100, base: 100, add: 2, count: 0 },
+            { name: "Cookie Farm", cost: 1100, base: 1100, add: 10, count: 0 },
+            { name: "Choco Factory", cost: 12000, base: 12000, add: 60, count: 0 },
+            { name: "Temple", cost: 130000, base: 130000, add: 250, count: 0 }
+        ];
+
+        function bake(e) {
+            let gain = 1 * (1 + (rebirthLevel * 0.2));
+            cookies += gain;
+            showPop(e.clientX, e.clientY, "+" + gain.toFixed(1));
+            update();
+        }
+
+        function togglePrestige(show) {
+            document.getElementById('prestige-modal').style.display = show ? 'block' : 'none';
+            if (show) checkRequirements();
+        }
+
+        function checkRequirements() {
+            const hasCookies = cookies >= 1000000;
+            const hasClickers = items[0].count >= 50;
+            const hasFactories = items[3].count >= 10;
+
+            updateReq('req-cookies', hasCookies);
+            updateReq('req-clickers', hasClickers);
+            updateReq('req-factories', hasFactories);
+
+            const btn = document.getElementById('confirm-prestige-btn');
+            if (hasCookies && hasClickers && hasFactories) {
+                btn.classList.remove('disabled');
+            } else {
+                btn.classList.add('disabled');
+            }
+        }
+
+        function updateReq(id, met) {
+            const el = document.getElementById(id);
+            el.className = 'req-item ' + (met ? 'met' : 'not-met');
+            el.innerHTML = (met ? '✓ ' : '✗ ') + el.innerHTML.replace('✓ ', '').replace('✗ ', '');
+        }
+
+        function doPrestige() {
+            rebirthLevel++;
+            cookies = 0;
+            items.forEach(i => { i.count = 0; i.cost = i.base; });
+            save();
+            location.reload();
+        }
+
+        function buy(idx) {
+            let i = items[idx];
+            if (cookies >= i.cost) {
+                cookies -= i.cost;
+                i.count++;
+                i.cost = Math.floor(i.base * Math.pow(1.2, i.count));
+                calculateCPS();
+                renderShop();
+                update();
+            }
+        }
+
+        function calculateCPS() {
+            cps = items.reduce((acc, i) => acc + (i.count * i.add), 0) * (1 + (rebirthLevel * 0.2));
+        }
+
+        function update() {
+            if (isNaN(cookies)) cookies = 0;
+            document.getElementById('cookie-total').innerText = Math.floor(cookies).toLocaleString();
+            document.getElementById('cps-val').innerText = "per second: " + cps.toLocaleString(undefined, {minimumFractionDigits: 1});
+            document.getElementById('prestige-val').innerText = `Rebirth Level: ${rebirthLevel}`;
+            
+            const buttons = document.querySelectorAll('.upgrade-item');
+            items.forEach((item, i) => {
+                if (buttons[i]) {
+                    if (cookies < item.cost) buttons[i].classList.add('locked');
+                    else buttons[i].classList.remove('locked');
+                }
+            });
+        }
+
+        function renderShop() {
+            const container = document.getElementById('shop-container');
+            container.innerHTML = items.map((item, i) => `
+                <div class="upgrade-item ${cookies < item.cost ? 'locked' : ''}" onclick="buy(${i})">
+                    <div>
+                        <div style="color:var(--primary)">${item.name} (${item.count})</div>
+                        <div style="font-size:0.7rem; color:#bac2de">+${item.add}/s</div>
+                    </div>
+                    <div style="color:var(--green)">${Math.floor(item.cost).toLocaleString()}</div>
+                </div>
+            `).join('');
+        }
+
+        function showPop(x, y, text) {
+            const p = document.createElement('div');
+            p.className = 'pop'; p.style.left = x + 'px'; p.style.top = y + 'px';
+            p.innerText = text; document.body.appendChild(p);
+            setTimeout(() => p.remove(), 800);
+        }
+
+        function save() {
+            localStorage.setItem('cookieEliteFinal', JSON.stringify({c: cookies, r: rebirthLevel, i: items.map(x=>x.count)}));
+        }
+
+        function load() {
+            const d = JSON.parse(localStorage.getItem('cookieEliteFinal'));
+            if (d) {
+                cookies = d.c || 0; rebirthLevel = d.r || 0;
+                d.i.forEach((count, idx) => {
+                    if(items[idx]) {
+                        items[idx].count = count;
+                        items[idx].cost = Math.floor(items[idx].base * Math.pow(1.2, count));
+                    }
+                });
+                calculateCPS();
+            }
+        }
+
+        setInterval(() => { cookies += (cps / 10); update(); }, 100);
+        setInterval(save, 5000);
+        load(); renderShop(); update();
+    </script>
+</body>
+</html>

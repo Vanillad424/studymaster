@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Study Master: Cat Trap</title>
+    <style>
+        body { 
+            background: #89b4fa; text-align: center; 
+            font-family: 'Arial Black', sans-serif; margin: 0;
+            display: flex; flex-direction: column; align-items: center;
+            min-height: 100vh; overflow: hidden;
+        }
+        h1 { margin: 15px 0 5px 0; color: #212121; text-shadow: 2px 2px white; }
+        .stats { font-size: 20px; margin-bottom: 10px; color: white; text-shadow: 1px 1px #000; }
+        .back-btn { 
+            background: #c0c0c0; border: 4px solid #fff; 
+            border-bottom: 4px solid #606060; border-right: 4px solid #606060;
+            padding: 12px; width: 320px; font-size: 16px; font-weight: bold;
+            cursor: pointer; margin-bottom: 15px; font-family: inherit;
+        }
+        #game-wrapper { position: relative; display: inline-block; }
+        canvas { display: block; cursor: pointer; filter: drop-shadow(0 12px 10px rgba(0,0,0,0.2)); }
+        #overlay {
+            display: none; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); background: #fff;
+            border: 6px solid #212121; padding: 30px; border-radius: 20px;
+            z-index: 100; width: 280px; text-align: center;
+        }
+        .restart-btn {
+            background: #212121; color: white; border: none;
+            padding: 15px 30px; font-size: 18px; font-family: 'Arial Black', sans-serif;
+            cursor: pointer; border-radius: 10px; margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Study Master: Cat Trap</h1>
+    <div class="stats">MOVES: <span id="moveCount">0</span></div>
+
+    <button class="back-btn" onclick="window.location.href='../index.html'">
+        Click here to return to the game site.
+    </button>
+
+    <div id="game-wrapper">
+        <canvas id="catCanvas"></canvas>
+        <div id="overlay">
+            <h2 id="statusText">YOU WIN!</h2>
+            <p id="finalScore"></p>
+            <button class="restart-btn" onclick="location.reload()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('catCanvas');
+        const ctx = canvas.getContext('2d');
+        const moveDisplay = document.getElementById('moveCount');
+
+        const rows = 11, cols = 11, hexSize = 26;
+        const hexWidth = Math.sqrt(3) * hexSize;
+        const hexHeight = 2 * hexSize;
+
+        canvas.width = Math.ceil(cols * hexWidth + hexWidth/2);
+        canvas.height = Math.ceil(rows * (hexHeight * 0.75) + hexHeight/4);
+
+        let grid = [], catPos = { r: 5, c: 5 }, gameOver = false, moves = 0;
+        let isMoving = false, jumpProgress = 0;
+        let startCoord = {x:0, y:0}, endCoord = {x:0, y:0};
+
+        function init() {
+            for (let r = 0; r < rows; r++) {
+                grid[r] = [];
+                for (let c = 0; c < cols; c++) {
+                    grid[r][c] = (Math.random() < 0.12 && !(r === 5 && c === 5)) ? 1 : 0;
+                }
+            }
+            requestAnimationFrame(draw);
+        }
+
+        function getHexCenter(r, c) {
+            return {
+                x: Math.floor(c * hexWidth + (r % 2 === 1 ? hexWidth / 2 : 0) + hexWidth / 2),
+                y: Math.floor(r * (hexHeight * 0.75) + hexHeight / 2)
+            };
+        }
+
+        function drawCat(x, y, h) {
+            ctx.save();
+            ctx.translate(x, y - h);
+            // Body
+            ctx.fillStyle = "black";
+            ctx.beginPath(); ctx.ellipse(0, 5, 12, 15, 0, 0, Math.PI*2); ctx.fill();
+            // Head
+            ctx.beginPath(); ctx.arc(0, -12, 10, 0, Math.PI*2); ctx.fill();
+            // Ears
+            ctx.beginPath(); ctx.moveTo(-9,-18); ctx.lineTo(-13,-28); ctx.lineTo(-3,-21); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(9,-18); ctx.lineTo(13,-28); ctx.lineTo(3,-21); ctx.fill();
+            // Eyes
+            ctx.fillStyle = "#a1ff00";
+            ctx.beginPath(); ctx.arc(-4,-13, 2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(4,-13, 2, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw Grid
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let p = getHexCenter(r, c);
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        ctx.lineTo(p.x + hexSize * Math.cos(Math.PI/3*i - Math.PI/6), p.y + hexSize * Math.sin(Math.PI/3*i - Math.PI/6));
+                    }
+                    ctx.closePath();
+                    ctx.fillStyle = grid[r][c] === 1 ? "#ffffff" : "#808080";
+                    ctx.fill();
+                    ctx.strokeStyle = "#89b4fa";
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            if (isMoving) {
+                jumpProgress += 0.05; // Faster, more snap
+                let curX = startCoord.x + (endCoord.x - startCoord.x) * jumpProgress;
+                let curY = startCoord.y + (endCoord.y - startCoord.y) * jumpProgress;
+                let h = Math.sin(jumpProgress * Math.PI) * 40;
+                drawCat(curX, curY, h);
+
+                if (jumpProgress >= 1) {
+                    isMoving = false;
+                    jumpProgress = 0;
+                    if (catPos.r === 0 || catPos.r === 10 || catPos.c === 0 || catPos.c === 10) {
+                        endGame("CAT ESCAPED!");
+                    }
+                }
+            } else {
+                let p = getHexCenter(catPos.r, catPos.c);
+                drawCat(p.x, p.y, 0);
+            }
+
+            if (!gameOver) requestAnimationFrame(draw);
+        }
+
+        function findPath() {
+            let queue = [[catPos]], visited = new Set([`${catPos.r},${catPos.c}`]);
+            while (queue.length > 0) {
+                let path = queue.shift(), curr = path[path.length - 1];
+                if (curr.r === 0 || curr.r === 10 || curr.c === 0 || curr.c === 10) return path;
+                
+                let dirs = curr.r % 2 === 0 ? [[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]] : [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]];
+                for (let d of dirs) {
+                    let nr = curr.r + d[0], nc = curr.c + d[1];
+                    if (nr>=0 && nr<11 && nc>=0 && nc<11 && grid[nr][nc] === 0 && !visited.has(`${nr},${nc}`)) {
+                        visited.add(`${nr},${nc}`);
+                        queue.push([...path, {r:nr, c:nc}]);
+                    }
+                }
+            }
+            return null;
+        }
+
+        canvas.onclick = (e) => {
+            if (gameOver || isMoving) return;
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    let p = getHexCenter(r, c);
+                    if (Math.hypot(mx - p.x, my - p.y) < hexSize * 0.8) {
+                        if (grid[r][c] === 0 && !(r === catPos.r && c === catPos.c)) {
+                            grid[r][c] = 1; // Trap placed
+                            moves++; moveDisplay.innerText = moves;
+                            
+                            let path = findPath();
+                            if (!path) {
+                                endGame("YOU WIN!");
+                            } else {
+                                startCoord = getHexCenter(catPos.r, catPos.c);
+                                catPos = path[1];
+                                endCoord = getHexCenter(catPos.r, catPos.c);
+                                isMoving = true;
+                            }
+                        }
+                    }
+                }
+            }
+        };
+
+        function endGame(msg) {
+            gameOver = true;
+            document.getElementById('statusText').innerText = msg;
+            document.getElementById('finalScore').innerText = "Total Moves: " + moves;
+            document.getElementById('overlay').style.display = "block";
+        }
+
+        init();
+    </script>
+</body>
+</html>
